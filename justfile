@@ -18,7 +18,7 @@ test:
 
 # Run integration tests
 test-integration:
-    cargo test --test crd_compatibility --test resource_registry --test model_compatibility --test field_extraction --test trace_tests --test graph_tests
+    cargo test --test crd_compatibility --test resource_registry --test model_compatibility --test field_extraction --test trace_tests --test graph_tests --test snapshot_tests
 
 # Run cargo-audit to check for CVEs (ignores unmaintained warnings)
 audit:

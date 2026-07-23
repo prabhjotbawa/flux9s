@@ -18,6 +18,8 @@ pub enum View {
     ResourceGraph,
     ResourceFavorites,
     ResourceHistory,
+    /// Waiting for external editor / SSA apply
+    ResourceEdit,
     #[allow(dead_code)] // Reserved for future alternative help view implementation
     Help,
 }
@@ -203,6 +205,20 @@ pub struct AsyncOperationState {
     pub operation_result_rx: Option<tokio::sync::oneshot::Receiver<anyhow::Result<()>>>,
     pub last_operation_key: Option<char>,
     pub confirmation_pending: Option<PendingOperation>,
+
+    // Edit operation
+    /// Resource being edited (key used for SSA apply)
+    pub edit_pending: Option<ResourceKey>,
+    /// Full fetched JSON object (includes resourceVersion) for the resource being edited
+    pub edit_full_yaml: Option<serde_json::Value>,
+    /// YAML string from the editor — queued for SSA apply
+    pub edit_save_pending: Option<String>,
+    /// Receiver for the async SSA apply result
+    pub edit_save_result_rx: Option<tokio::sync::oneshot::Receiver<anyhow::Result<()>>>,
+    /// Error message from the last failed save attempt
+    pub edit_error_message: Option<String>,
+    /// True once the external editor has been launched for the current edit
+    pub edit_editor_launched: bool,
 }
 
 impl AsyncOperationState {
@@ -227,6 +243,13 @@ impl AsyncOperationState {
         self.operation_result_rx = None;
         self.last_operation_key = None;
         self.confirmation_pending = None;
+
+        self.edit_pending = None;
+        self.edit_full_yaml = None;
+        self.edit_save_pending = None;
+        self.edit_save_result_rx = None;
+        self.edit_error_message = None;
+        self.edit_editor_launched = false;
     }
 }
 

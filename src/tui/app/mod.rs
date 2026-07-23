@@ -5,7 +5,7 @@
 
 pub mod state;
 
-mod async_ops;
+pub mod async_ops;
 mod core;
 mod events;
 mod rendering;

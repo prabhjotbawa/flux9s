@@ -692,6 +692,7 @@ mod tests {
             favorites: vec![],
             default_resource_filter: None,
             connect_timeout_seconds: crate::kube::health::DEFAULT_CONNECT_TIMEOUT_SECS,
+            editor: None,
         };
         let theme = Theme::default();
         App::new(state, "test-context".to_string(), None, config, theme)

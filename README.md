@@ -120,6 +120,7 @@ By default, `flux9s` watches the `flux-system` namespace. Use `:ns all` to view 
 - `r` - Resume resource
 - `R` - Reconcile resource
 - `y` - View resource YAML
+- `e` - Edit resource in system editor (opens YAML, applies changes via Server Side Apply on save)
 - `f` - Toggle favorite
 - `g` - View resource graph (Kustomization, HelmRelease, etc.)
 - `h` - View reconciliation history
@@ -156,6 +157,7 @@ By default, `flux9s` watches the `flux-system` namespace. Use `:ns all` to view 
 - `flux9s config set {KEY} {VALUE}` - set a yaml option with the cli.
 - `config set ui.skinReadOnly rose-pine` - set a skin that is in your systems flux9s/skins dir when readonly enabled.
 - `flux9s config set connectTimeoutSeconds 15` - set the startup Kubernetes API health-check timeout.
+- `flux9s config set editor vim` - set the preferred editor for resource editing (overridden by `FLUX9S_EDITOR` env var).
 - `flux9s config skins set navy.yaml` - import a skin, validate, set in config.
 
 > **Note:** Not all K9s skins are compatible with flux9s. flux9s skins follow a similar format but may require adjustments to work properly.

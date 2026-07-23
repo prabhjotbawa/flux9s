@@ -117,6 +117,7 @@ impl App {
                     | crossterm::event::KeyCode::Char('r')
                     | crossterm::event::KeyCode::Char('R')
                     | crossterm::event::KeyCode::Char('W')
+                    | crossterm::event::KeyCode::Char('e')
             ) | (
                 crossterm::event::KeyModifiers::CONTROL,
                 crossterm::event::KeyCode::Char('d')
@@ -443,6 +444,42 @@ impl App {
                     self.view_state.current_view = View::ResourceDescribe;
                 }
             }
+            crossterm::event::KeyCode::Char('e') => {
+                if self.config.read_only {
+                    self.set_status_message((
+                        "Editing disabled in read-only mode".to_string(),
+                        true,
+                    ));
+                } else if let Some(resource) = self.get_current_resource() {
+                    // Save current view as previous list view before navigating
+                    if self.view_state.current_view == View::ResourceList
+                        || self.view_state.current_view == View::ResourceFavorites
+                    {
+                        self.view_state.previous_list_view = self.view_state.current_view;
+                    }
+                    // Trigger YAML fetch for the full resource object
+                    let fetch_key = format!(
+                        "{}:{}:{}",
+                        resource.resource_type, resource.namespace, resource.name
+                    );
+                    self.async_state.yaml_fetch_pending = Some(fetch_key);
+                    self.async_state.yaml_fetched = None;
+                    self.async_state.edit_pending = Some(ResourceKey::new(
+                        resource.resource_type.clone(),
+                        resource.namespace.clone(),
+                        resource.name.clone(),
+                    ));
+                    self.async_state.edit_full_yaml = None;
+                    self.async_state.edit_editor_launched = false;
+                    self.async_state.edit_error_message = None;
+                    self.view_state.current_view = View::ResourceEdit;
+                } else {
+                    self.set_status_message((
+                        "No resource selected for editing".to_string(),
+                        true,
+                    ));
+                }
+            }
             crossterm::event::KeyCode::Enter
                 if (self.view_state.current_view == View::ResourceList
                     || self.view_state.current_view == View::ResourceFavorites) =>
@@ -592,6 +629,15 @@ impl App {
                     // Return to previous list view (favorites if we came from there, otherwise list)
                     self.view_state.current_view = self.view_state.previous_list_view;
                     self.selection_state.selected_resource_key = None;
+                } else if self.view_state.current_view == View::ResourceEdit {
+                    // Cancel edit — clear all edit state
+                    self.async_state.edit_pending = None;
+                    self.async_state.edit_full_yaml = None;
+                    self.async_state.edit_save_pending = None;
+                    self.async_state.edit_save_result_rx = None;
+                    self.async_state.edit_error_message = None;
+                    self.async_state.edit_editor_launched = false;
+                    self.view_state.current_view = self.view_state.previous_list_view;
                 } else if self.view_state.current_view == View::ResourceFavorites {
                     self.view_state.current_view = View::ResourceList;
                     self.selection_state.selected_resource_key = None;
@@ -779,6 +825,17 @@ impl App {
                 // there, otherwise the main resource list).
                 self.view_state.current_view = self.view_state.previous_list_view;
                 self.selection_state.selected_resource_key = None;
+                None
+            }
+            View::ResourceEdit => {
+                // Cancel edit — clear all edit state and return to list
+                self.async_state.edit_pending = None;
+                self.async_state.edit_full_yaml = None;
+                self.async_state.edit_save_pending = None;
+                self.async_state.edit_save_result_rx = None;
+                self.async_state.edit_error_message = None;
+                self.async_state.edit_editor_launched = false;
+                self.view_state.current_view = self.view_state.previous_list_view;
                 None
             }
             View::ResourceFavorites => {
@@ -1399,6 +1456,7 @@ mod tests {
             favorites: vec![],
             default_resource_filter: None,
             connect_timeout_seconds: crate::kube::health::DEFAULT_CONNECT_TIMEOUT_SECS,
+            editor: None,
         };
         let theme = Theme::default();
         App::new(state, "test-context".to_string(), None, config, theme)
