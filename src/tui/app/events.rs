@@ -436,12 +436,8 @@ impl App {
                         true,
                     ));
                 } else if let Some(resource) = self.get_current_resource() {
-                    // Save current view as previous list view before navigating
-                    if self.view_state.current_view == View::ResourceList
-                        || self.view_state.current_view == View::ResourceFavorites
-                    {
-                        self.view_state.previous_list_view = self.view_state.current_view;
-                    }
+                    // Remember the exact view we came from so cancel/save returns there
+                    self.async_state.edit_return_view = self.view_state.current_view;
                     // Trigger YAML fetch for the full resource object (via AsyncTask)
                     let rk = ResourceKey::new(
                         resource.resource_type.clone(),
@@ -660,7 +656,8 @@ impl App {
                     self.async_state.edit_save_result_rx = None;
                     self.async_state.edit_error_message = None;
                     self.async_state.edit_editor_launched = false;
-                    self.view_state.current_view = self.view_state.previous_list_view;
+                    self.view_state.current_view = self.async_state.edit_return_view;
+                    self.async_state.edit_return_view = View::ResourceList;
                 } else if self.view_state.current_view.is_nested_view() {
                     // Mirror Esc: return to the graph if we came from there,
                     // otherwise to the previous list view.
@@ -1142,14 +1139,15 @@ impl App {
                 None
             }
             View::ResourceEdit => {
-                // Cancel edit — clear all edit state and return to list
+                // Cancel edit — clear all edit state and return to origin view
                 self.async_state.edit_pending = None;
                 self.async_state.edit_full_yaml = None;
                 self.async_state.edit_save_pending = None;
                 self.async_state.edit_save_result_rx = None;
                 self.async_state.edit_error_message = None;
                 self.async_state.edit_editor_launched = false;
-                self.view_state.current_view = self.view_state.previous_list_view;
+                self.view_state.current_view = self.async_state.edit_return_view;
+                self.async_state.edit_return_view = View::ResourceList;
                 None
             }
             View::ResourceFavorites => {

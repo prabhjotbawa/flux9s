@@ -350,7 +350,7 @@ impl UIState {
 
 /// Async operation state: one [`AsyncTask`] slot per view fetch, plus the
 /// mutation-operation flow (which carries confirmation state alongside).
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct AsyncOperationState {
     /// Full-object fetch backing the YAML view.
     pub yaml: AsyncTask<ResourceKey, serde_json::Value>,
@@ -384,6 +384,30 @@ pub struct AsyncOperationState {
     pub edit_error_message: Option<String>,
     /// True once the external editor has been launched for the current edit
     pub edit_editor_launched: bool,
+    /// The view that was active when `e` was pressed — returned to on cancel/save
+    pub edit_return_view: View,
+}
+
+impl Default for AsyncOperationState {
+    fn default() -> Self {
+        Self {
+            yaml: Default::default(),
+            describe: Default::default(),
+            trace: Default::default(),
+            graph: Default::default(),
+            workload: Default::default(),
+            operation: Default::default(),
+            last_operation_key: None,
+            confirmation_pending: None,
+            edit_pending: None,
+            edit_full_yaml: None,
+            edit_save_pending: None,
+            edit_save_result_rx: None,
+            edit_error_message: None,
+            edit_editor_launched: false,
+            edit_return_view: View::ResourceList,
+        }
+    }
 }
 
 impl AsyncOperationState {
@@ -403,6 +427,7 @@ impl AsyncOperationState {
         self.edit_save_result_rx = None;
         self.edit_error_message = None;
         self.edit_editor_launched = false;
+        self.edit_return_view = View::ResourceList;
     }
 }
 

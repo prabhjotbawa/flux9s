@@ -120,8 +120,9 @@ impl App {
                 self.async_state.edit_save_pending = None;
                 self.async_state.edit_error_message = None;
                 self.async_state.edit_editor_launched = false;
-                // Return to previous list view
-                self.view_state.current_view = self.view_state.previous_list_view;
+                // Return to origin view (wherever 'e' was pressed from)
+                self.view_state.current_view = self.async_state.edit_return_view;
+                self.async_state.edit_return_view = super::state::View::ResourceList;
                 self.set_status_message(("Resource saved successfully".to_string(), false));
             }
             Err(e) => {
@@ -132,7 +133,8 @@ impl App {
                 self.async_state.edit_full_yaml = None;
                 self.async_state.edit_save_pending = None;
                 self.async_state.edit_editor_launched = false;
-                self.view_state.current_view = self.view_state.previous_list_view;
+                self.view_state.current_view = self.async_state.edit_return_view;
+                self.async_state.edit_return_view = super::state::View::ResourceList;
                 self.set_status_message((format!("Save failed: {}", msg), true));
             }
         }
@@ -221,7 +223,7 @@ mod tests {
         app.async_state.edit_save_pending = Some("apiVersion: v1".to_string());
         app.async_state.edit_editor_launched = true;
         app.view_state.current_view = View::ResourceEdit;
-        app.view_state.previous_list_view = View::ResourceList;
+        app.async_state.edit_return_view = View::ResourceList;
     }
 
     #[test]
@@ -274,13 +276,26 @@ mod tests {
     }
 
     #[test]
-    fn test_set_edit_save_result_error_returns_to_favorites_if_that_was_previous_view() {
+    fn test_set_edit_save_result_error_returns_to_origin_view() {
         let mut app = create_test_app();
         set_edit_in_progress(&mut app);
-        app.view_state.previous_list_view = View::ResourceFavorites;
+        // Simulate pressing 'e' from ResourceFavorites
+        app.async_state.edit_return_view = View::ResourceFavorites;
 
         app.set_edit_save_result(Err(anyhow::anyhow!("some error")));
 
         assert_eq!(app.view_state.current_view, View::ResourceFavorites);
+    }
+
+    #[test]
+    fn test_set_edit_save_result_success_returns_to_yaml_view() {
+        let mut app = create_test_app();
+        set_edit_in_progress(&mut app);
+        // Simulate pressing 'e' from ResourceYAML
+        app.async_state.edit_return_view = View::ResourceYAML;
+
+        app.set_edit_save_result(Ok(()));
+
+        assert_eq!(app.view_state.current_view, View::ResourceYAML);
     }
 }

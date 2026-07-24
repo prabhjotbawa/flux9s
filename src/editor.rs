@@ -80,9 +80,29 @@ pub fn open_in_editor_with_fallback(
     Err(last_err)
 }
 
+/// Return extra flags needed so GUI editors block until the file is closed.
+///
+/// GUI editors like VS Code fork immediately and return exit code 0 before the
+/// user has made any changes. Passing `--wait` (or equivalent) tells them to
+/// block until the editing window is closed, which is required for the edit
+/// flow to work correctly.
+fn gui_wait_flags(editor: &str) -> &'static [&'static str] {
+    // Extract the binary name (last path component, strip any extension on Windows)
+    let binary = std::path::Path::new(editor)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(editor);
+    match binary {
+        "code" | "code-insiders" | "codium" | "subl" | "atom" | "zed" | "gedit" => &["--wait"],
+        _ => &[],
+    }
+}
+
 fn try_open_editor(editor: &str, path: &std::path::Path) -> anyhow::Result<()> {
     use anyhow::Context;
+    let extra_flags = gui_wait_flags(editor);
     let status = std::process::Command::new(editor)
+        .args(extra_flags)
         .arg(path)
         .status()
         .with_context(|| format!("Failed to launch editor '{}'", editor))?;
@@ -202,6 +222,25 @@ mod tests {
     fn test_editor_candidates_always_ends_with_vi() {
         let candidates = editor_candidates_with_env(None, None, None, None);
         assert_eq!(candidates, vec!["vi"]);
+    }
+
+    #[test]
+    fn test_gui_wait_flags_code() {
+        assert_eq!(gui_wait_flags("code"), &["--wait"]);
+        assert_eq!(gui_wait_flags("/usr/local/bin/code"), &["--wait"]);
+        assert_eq!(gui_wait_flags("code-insiders"), &["--wait"]);
+        assert_eq!(gui_wait_flags("subl"), &["--wait"]);
+        assert_eq!(gui_wait_flags("atom"), &["--wait"]);
+        assert_eq!(gui_wait_flags("zed"), &["--wait"]);
+    }
+
+    #[test]
+    fn test_gui_wait_flags_terminal_editors_no_flags() {
+        assert_eq!(gui_wait_flags("vim"), &[] as &[&str]);
+        assert_eq!(gui_wait_flags("nvim"), &[] as &[&str]);
+        assert_eq!(gui_wait_flags("nano"), &[] as &[&str]);
+        assert_eq!(gui_wait_flags("vi"), &[] as &[&str]);
+        assert_eq!(gui_wait_flags("emacs"), &[] as &[&str]);
     }
 
     #[test]

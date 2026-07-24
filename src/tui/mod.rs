@@ -540,12 +540,14 @@ pub async fn run_tui_with_async_init(
                         }
                     }
                     Err(e) => {
-                        // If edit was pending, cancel it and return to list
+                        // If edit was pending, cancel it and return to origin view
                         if app.view_state.current_view == crate::tui::app::state::View::ResourceEdit
                         {
                             app.async_state.edit_pending = None;
                             app.async_state.edit_editor_launched = false;
-                            app.view_state.current_view = app.view_state.previous_list_view;
+                            app.view_state.current_view = app.async_state.edit_return_view;
+                            app.async_state.edit_return_view =
+                                crate::tui::app::state::View::ResourceList;
                         }
                         app.async_state.yaml.set_error();
                         app.set_status_message((format!("Failed to fetch YAML: {}", e), true));
@@ -687,7 +689,7 @@ pub async fn run_tui_with_async_init(
                     }
 
                     let edit_result: anyhow::Result<Option<String>> = (|| {
-                        let mut tmp = tempfile::NamedTempFile::new()?;
+                        let mut tmp = tempfile::Builder::new().suffix(".yaml").tempfile()?;
                         use std::io::Write;
                         tmp.write_all(yaml_str.as_bytes())?;
                         let tmp_path = tmp.path().to_path_buf();
@@ -721,13 +723,17 @@ pub async fn run_tui_with_async_init(
                             ));
                             app.async_state.edit_pending = None;
                             app.async_state.edit_editor_launched = false;
-                            app.view_state.current_view = app.view_state.previous_list_view;
+                            app.view_state.current_view = app.async_state.edit_return_view;
+                            app.async_state.edit_return_view =
+                                crate::tui::app::state::View::ResourceList;
                         }
                         Err(e) => {
                             app.set_status_message((format!("Editor error: {}", e), true));
                             app.async_state.edit_pending = None;
                             app.async_state.edit_editor_launched = false;
-                            app.view_state.current_view = app.view_state.previous_list_view;
+                            app.view_state.current_view = app.async_state.edit_return_view;
+                            app.async_state.edit_return_view =
+                                crate::tui::app::state::View::ResourceList;
                         }
                     }
                 }
